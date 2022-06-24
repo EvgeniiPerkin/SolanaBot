@@ -4,6 +4,7 @@ import os.path
 import glob
 import re
 
+import constant
 from loader_files import Loader
 from querydata import QueryData
 
@@ -13,8 +14,9 @@ def get_validator_info(pub_key):
     account = ""
     version = ""
     delinquent = ""
-    if os.path.isfile('files/validators.json'):
-        file_json = open('files/validators.json')
+    path = os.path.join(constant.CURRENT_DIR, 'files/validators.json')
+    if os.path.isfile(path):
+        file_json = open(path)
         data_json = json.load(file_json)
         for i in data_json['validators']:
             if i['identityPubkey'] == pub_key:
@@ -31,8 +33,9 @@ def get_validator_info(pub_key):
 
 def get_avg_skip_rate():
     skip = 0.0
-    if os.path.isfile('files/validators.json'):
-        file_json = open('files/validators.json')
+    path = os.path.join(constant.CURRENT_DIR, 'files/validators.json')
+    if os.path.isfile(path):
+        file_json = open(path)
         data_json = json.load(file_json)
         skip = data_json['averageStakeWeightedSkipRate']
         file_json.close()
@@ -40,7 +43,8 @@ def get_avg_skip_rate():
 
 
 def write_stake_file(vote_address):
-    with open('files/stake_' + vote_address + '.json', 'w') as f_stake:
+    path = os.path.join(constant.CURRENT_DIR, 'files/stake_' + vote_address + '.json')
+    with open(path, 'w') as f_stake:
         f_stake.write(loader.get_stake(vote_address))
     f_stake.close()
 
@@ -49,8 +53,9 @@ def get_list_stakes(vote_address):
     active_stake = 0
     activating_stake = 0
     deactivating_stake = 0
-    if os.path.isfile('files/stake_' + vote_address + '.json'):
-        file_json = open('files/stake_' + vote_address + '.json')
+    path = os.path.join(constant.CURRENT_DIR, 'files/stake_' + vote_address + '.json')
+    if os.path.isfile(path):
+        file_json = open(path)
         data_json = json.load(file_json)
         for i in data_json:
             if 'activeStake' in i:
@@ -71,8 +76,9 @@ def get_list_stakes(vote_address):
 
 def get_leader_all(pub_key):
     j = 0
-    if os.path.isfile('files/leader_schedule.json'):
-        file_json = open('files/leader_schedule.json')
+    path = os.path.join(constant.CURRENT_DIR, 'files/leader_schedule.json')
+    if os.path.isfile(path):
+        file_json = open(path)
         data_json = json.load(file_json)
         for i in data_json['leaderScheduleEntries']:
             if i['leader'] == pub_key:
@@ -83,8 +89,9 @@ def get_leader_all(pub_key):
 
 def get_leader_current(pub_key):
     j = 0
-    if os.path.isfile('files/block_production.json'):
-        file_json = open('files/block_production.json')
+    path = os.path.join(constant.CURRENT_DIR, 'files/block_production.json')
+    if os.path.isfile(path):
+        file_json = open(path)
         data_json = json.load(file_json)
         for i in data_json['individual_slot_status']:
             if i['leader'] == pub_key:
@@ -97,8 +104,9 @@ def get_epoch_info():
     number = []
     percent = []
     completed_time = ""
-    if os.path.isfile('files/epoch.txt'):
-        with open('files/epoch.txt', 'r') as file_e:
+    path = os.path.join(constant.CURRENT_DIR, 'files/epoch.txt')
+    if os.path.isfile(path):
+        with open(path, 'r') as file_e:
             for ln in file_e:
                 list_w = ln.split(sep=':')
                 if list_w[0] == "Epoch":
@@ -114,8 +122,9 @@ def get_epoch_info():
 
 def get_ip(pub_key):
     ip = ""
-    if os.path.isfile('files/gossip.json'):
-        file_json = open('files/gossip.json')
+    path = os.path.join(constant.CURRENT_DIR, 'files/gossip.json')
+    if os.path.isfile(path):
+        file_json = open(path)
         data_json = json.load(file_json)
         for i in data_json:
             if i['identityPubkey'] == pub_key:
@@ -128,27 +137,33 @@ def get_ip(pub_key):
 loader = Loader()
 
 print("Remove old files.")
-for file in glob.glob("files/*"):
+path_files = os.path.join(constant.CURRENT_DIR, 'files')
+for file in glob.glob(path_files + "/*"):
     os.remove(file)
 
 print("Loading new files.")
-with open('files/validators.json', 'w') as f_validators:
+path_files = os.path.join(constant.CURRENT_DIR, 'files/validators.json')
+with open(path_files, 'w') as f_validators:
     f_validators.write(loader.get_validators())
 f_validators.close()
 
-with open('files/gossip.json', 'w') as f_gossip:
+path_files = os.path.join(constant.CURRENT_DIR, 'files/gossip.json')
+with open(path_files, 'w') as f_gossip:
     f_gossip.write(loader.get_gossip())
 f_gossip.close()
 
-with open('files/leader_schedule.json', 'w') as f_leader_schedule:
+path_files = os.path.join(constant.CURRENT_DIR, 'files/leader_schedule.json')
+with open(path_files, 'w') as f_leader_schedule:
     f_leader_schedule.write(loader.get_leader_schedule())
 f_leader_schedule.close()
 
-with open('files/block_production.json', 'w') as f_block_production:
+path_files = os.path.join(constant.CURRENT_DIR, 'files/block_production.json')
+with open(path_files, 'w') as f_block_production:
     f_block_production.write(loader.get_block_production())
 f_block_production.close()
 
-with open('files/epoch.txt', 'w') as f_epoch:
+path_files = os.path.join(constant.CURRENT_DIR, 'files/epoch.txt')
+with open(path_files, 'w') as f_epoch:
     f_epoch.write(loader.get_epoch())
 f_epoch.close()
 
@@ -156,7 +171,8 @@ avg_skip = round(float(get_avg_skip_rate()), 2)
 list_epoch = get_epoch_info()
 
 print("Collecting information.")
-with open('addresses.txt', 'r') as f:
+path_files = os.path.join(constant.CURRENT_DIR, 'addresses.txt')
+with open(path_files, 'r') as f:
     for line in f:
         list_word = line.split()
         q = QueryData()

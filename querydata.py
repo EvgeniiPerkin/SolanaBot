@@ -13,7 +13,8 @@ def get_queue_number(address):
 def send_msg_telegram(token, chat_id, body):
     url = "https://api.telegram.org/bot" + token + "/sendMessage"
     param = {'chat_id': chat_id, 'text': body, 'parse_mode': 'html'}
-    requests.post(url=url, params=param)
+    r = requests.post(url=url, params=param)
+    print(r)
 
 
 class QueryData:
@@ -147,8 +148,8 @@ class QueryData:
         if is_number:
             body = f'{ self.__icon } <b>{ self.__number }. { w }</b>[{ self.__name }] <b>{ self.__public_key[:7] }</b>'
         else:
-            body = f'{ self.__icon } <b>[{ self.__last_name }] { self.__public_key[:7] }'
-        body += f' [ { self.__queue_number } ]</b>\n'
+            body = f'{ self.__icon } <b>[{ self.__last_name }] { self.__public_key[:7] }</b>'
+        body += f' [ { self.__queue_number } ]\n'
         body += f'<b>Skip</b>: { self.__skip }, <b>cluster skip</b>: { self.__cluster_skip }\n'
         body += f'<b>Stake</b>: { self.__stake }, <b>leader</b>: { self.__leader } [{ self.__leader_all }]\n'
         body += f'<b>Activating</b>: { self.__activation }, <b>deactivating</b>: { self.__d_stake }\n'

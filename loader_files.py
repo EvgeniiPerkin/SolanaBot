@@ -4,13 +4,11 @@ import constant
 
 
 class Loader:
-    """ Класс загрузчик данных по солана """
     def __init__(self):
         self.__path_solana = constant.SOLANA_PATH
         self.__cluster = constant.SOLANA_CLUSTER
 
     def get_validators(self):
-        """ Возвращает список валидаторов и их данные """
         process = subprocess.run([self.__path_solana, f'-u{ self.__cluster }', 'validators', '--output', 'json-compact'],
                                  stdout=subprocess.PIPE,
                                  universal_newlines=True)

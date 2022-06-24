@@ -24,6 +24,8 @@ def get_validator_info(pub_key):
                 delinquent = i['delinquent']
                 break
         file_json.close()
+        if skip is None:
+            skip = 0.0
     return [round(skip, 2), account, version, delinquent]
 
 

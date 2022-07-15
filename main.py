@@ -3,10 +3,66 @@ import os
 import os.path
 import glob
 import re
+import logging
+import subprocess
+import sys
+import argparse
 
 import constant
-from loader_files import Loader
 from querydata import QueryData
+
+# Arguments
+parser = argparse.ArgumentParser(description='Solana telegram bot')
+parser.add_argument('-c', '--cluster', default='t', type=str,
+                    help='type of cluster')
+parser.add_argument("-v", "--verbose", help="increase output verbosity to DEBUG", action="store_true")
+args = parser.parse_args()
+
+# Logging
+logging.getLogger('urllib3').setLevel(logging.WARNING)
+if args.verbose:
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(f'{constant.CURRENT_DIR}/bot.log'),
+            logging.StreamHandler(sys.stdout),
+        ]
+    )
+else:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(f'{constant.CURRENT_DIR}/bot.log'),
+            logging.StreamHandler(sys.stdout),
+        ]
+    )
+logger = logging.getLogger(__name__)
+
+
+def get_balance(pub_key):
+    process = subprocess.run([constant.SOLANA_PATH, 'balance', pub_key, f'-u{constant.SOLANA_CLUSTER}'],
+                             stdout=subprocess.PIPE,
+                             universal_newlines=True)
+
+    balance_txt = process.stdout
+    balance_txt = balance_txt.replace(' SOL', '')
+    return round(float(balance_txt), 2)
+
+
+def run_task(_cmd, full_name_file):
+    try:
+        process = subprocess.run(_cmd, shell=True, bufsize=1, universal_newlines=True, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+
+        with open(full_name_file, 'w') as fl:
+            fl.write(process.stdout)
+        fl.close()
+
+        logger.debug(f"Write to file:{full_name_file}")
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Error write file:{full_name_file} | {e.output} | {e.returncode}")
 
 
 def get_validator_info(pub_key):
@@ -40,13 +96,6 @@ def get_avg_skip_rate():
         skip = data_json['averageStakeWeightedSkipRate']
         file_json.close()
     return skip
-
-
-def write_stake_file(vote_address):
-    path = os.path.join(constant.CURRENT_DIR, 'files/stake_' + vote_address + '.json')
-    with open(path, 'w') as f_stake:
-        f_stake.write(loader.get_stake(vote_address))
-    f_stake.close()
 
 
 def get_list_stakes(vote_address):
@@ -134,43 +183,38 @@ def get_ip(pub_key):
     return ip
 
 
-loader = Loader()
+constant.SOLANA_CLUSTER = args.cluster
 
-print("Remove old files.")
+logger.info("Remove old files.")
 path_files = os.path.join(constant.CURRENT_DIR, 'files')
 for file in glob.glob(path_files + "/*"):
     os.remove(file)
 
-print("Loading new files.")
+logger.info("Loading new files.")
+cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } validators --output json-compact"
 path_files = os.path.join(constant.CURRENT_DIR, 'files/validators.json')
-with open(path_files, 'w') as f_validators:
-    f_validators.write(loader.get_validators())
-f_validators.close()
+run_task(cmd, path_files)
 
 path_files = os.path.join(constant.CURRENT_DIR, 'files/gossip.json')
-with open(path_files, 'w') as f_gossip:
-    f_gossip.write(loader.get_gossip())
-f_gossip.close()
+cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } gossip --output json-compact"
+run_task(cmd, path_files)
 
 path_files = os.path.join(constant.CURRENT_DIR, 'files/leader_schedule.json')
-with open(path_files, 'w') as f_leader_schedule:
-    f_leader_schedule.write(loader.get_leader_schedule())
-f_leader_schedule.close()
+cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } leader-schedule --output json-compact"
+run_task(cmd, path_files)
 
 path_files = os.path.join(constant.CURRENT_DIR, 'files/block_production.json')
-with open(path_files, 'w') as f_block_production:
-    f_block_production.write(loader.get_block_production())
-f_block_production.close()
+cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } -v block-production --output json-compact"
+run_task(cmd, path_files)
 
 path_files = os.path.join(constant.CURRENT_DIR, 'files/epoch.txt')
-with open(path_files, 'w') as f_epoch:
-    f_epoch.write(loader.get_epoch())
-f_epoch.close()
+cmd = f"{ constant.SOLANA_PATH } epoch-info"
+run_task(cmd, path_files)
 
 avg_skip = round(float(get_avg_skip_rate()), 2)
 list_epoch = get_epoch_info()
 
-print("Collecting information.")
+logger.info("Collecting information.")
 path_files = os.path.join(constant.CURRENT_DIR, 'addresses.txt')
 with open(path_files, 'r') as f:
     for line in f:
@@ -190,12 +234,14 @@ with open(path_files, 'r') as f:
         q.set_leader_all(get_leader_all(list_word[1]))
         q.set_leader(get_leader_current(list_word[1]))
         if vote_key != '':
-            write_stake_file(vote_key)
+            path_files = os.path.join(constant.CURRENT_DIR, 'files/stake_' + vote_key + '.json')
+            cmd = f"{constant.SOLANA_PATH} -u{constant.SOLANA_CLUSTER} stakes { vote_key } --output json-compact"
+            run_task(cmd, path_files)
             lst = get_list_stakes(vote_key)
             q.set_stake(lst[0])
             q.set_activation(lst[1])
             q.set_d_stake(lst[2])
-        q.set_balance(loader.get_balance(list_word[1]))
+        q.set_balance(get_balance(list_word[1]))
         q.set_version(info_validator[2])
         q.set_epoch_num(list_epoch[0])
         q.set_epoch_percent(list_epoch[1])
@@ -204,4 +250,4 @@ with open(path_files, 'r') as f:
         q.send()
 f.close()
 
-print("Done!!!")
+logger.info("Done!!!")

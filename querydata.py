@@ -14,7 +14,6 @@ def send_msg_telegram(token, chat_id, body):
     url = "https://api.telegram.org/bot" + token + "/sendMessage"
     param = {'chat_id': chat_id, 'text': body, 'parse_mode': 'html'}
     r = requests.post(url=url, params=param)
-    print(r)
 
 
 class QueryData:

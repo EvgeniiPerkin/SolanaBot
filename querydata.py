@@ -37,6 +37,7 @@ class QueryData:
         self.__activation = 0.0
         self.__d_stake = 0.0
         self.__balance = 0.0
+        self.__vote_balance = 0.0
         self.__epoch_num = 0
         self.__epoch_percent = 0.0
         self.__epoch_end = ""
@@ -93,6 +94,9 @@ class QueryData:
 
     def set_balance(self, balance):
         self.__balance = balance
+
+    def set_vote_balance(self, vote_balance):
+        self.__vote_balance = vote_balance
 
     def set_epoch_num(self, epoch_num):
         self.__epoch_num = epoch_num
@@ -163,8 +167,10 @@ class QueryData:
         w = ""
         if self.__is_skip():
             w = f"Skip > cluster+{self.__max_cluster_skip}%\n"
+
         if self.__delinquent == 'true':
             w += "Delinquent!\n"
+
         if self.__is_balance():
             w += "Balance!\n"
 
@@ -181,16 +187,29 @@ class QueryData:
 
         self.__icon = self.__get_ico()
         icon_money = u'\U0001f4b8'
+        icon_ready_main = u'\U0001f4a5'
 
         if is_number:
             body = f'{ self.__icon } <b>{ self.__number }. { cl } { w }</b>[{ self.__name }] <b>{ self.__public_key[:7] }</b>'
         else:
             body = f'{ self.__icon } <b>[{ self.__last_name }] { self.__public_key[:7] }</b>'
-        body += f' [ { self.__queue_number } ]\n'
+
+        if self.__cluster == 't':
+            if self.__queue_number is None:
+                body += f' [ main ]'
+            elif self.__queue_number <= 25:
+                body += f' [ { icon_ready_main } { self.__queue_number } ]'
+            else:
+                body += f' [ { self.__queue_number } ]'
+
+        body += "\n"
         body += f'<b>Skip</b>: { self.__skip }, <b>cluster skip</b>: { self.__cluster_skip }\n'
         body += f'<b>Stake</b>: { self.__stake }, <b>leader</b>: { self.__leader } [{ self.__leader_all }]\n'
         body += f'<b>Activating</b>: { self.__activation }, <b>deactivating</b>: { self.__d_stake }\n'
-        body += f'<b>Balance</b>: { self.__balance } { 	icon_money } \n'
+        body += f'<b>Balance</b>: { self.__balance } { 	icon_money }'
+        if self.__cluster == 'm':
+            body += f', <b>vote</b>: {self.__vote_balance} { icon_money }'
+        body += f'\n'
         body += f'<b>Epoch</b>: { self.__epoch_num }, { self.__epoch_percent }%, { self.__epoch_end }\n'
         body += f'<b>Version</b>: { self.__version }, <b>IP</b>: <u>{ self.__ip }</u>'
         return body

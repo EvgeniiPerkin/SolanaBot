@@ -45,8 +45,8 @@ else:
 logger = logging.getLogger(__name__)
 
 
-def get_balance(pub_key):
-    process = subprocess.run([constant.SOLANA_PATH, 'balance', pub_key, f'-u{SOLANA_CLUSTER}'],
+def get_balance(key):
+    process = subprocess.run([constant.SOLANA_PATH, 'balance', key, f'-u{SOLANA_CLUSTER}'],
                              stdout=subprocess.PIPE,
                              universal_newlines=True)
 
@@ -247,6 +247,7 @@ with open(path_files, 'r') as f:
             q.set_stake(lst[0])
             q.set_activation(lst[1])
             q.set_d_stake(lst[2])
+            q.set_vote_balance(get_balance(vote_key))
         q.set_balance(get_balance(list_word[1]))
         q.set_version(info_validator[2])
         q.set_epoch_num(list_epoch[0])

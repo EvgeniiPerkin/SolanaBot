@@ -1,3 +1,6 @@
-/addresses.txt
-files/*
-/bot.log
+/addresses_t.txt
+/addresses_m.txt
+files_t/*
+files_m/*
+/bot_t.log
+/bot_m.log

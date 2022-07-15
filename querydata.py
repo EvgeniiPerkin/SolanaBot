@@ -18,6 +18,7 @@ def send_msg_telegram(token, chat_id, body):
 
 class QueryData:
     def __init__(self):
+        self.__cluster = ""
         self.__last_name = ""
         self.__first_name = ""
         self.__number = 0
@@ -41,6 +42,9 @@ class QueryData:
         self.__version = ""
         self.__ip = ""
         self.__delinquent = False
+
+    def set_cluster(self, cluster):
+        self.__cluster = cluster
 
     def load_queue_number(self):
         tmp = get_queue_number(self.__public_key)

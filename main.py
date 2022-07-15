@@ -14,18 +14,22 @@ from querydata import QueryData
 # Arguments
 parser = argparse.ArgumentParser(description='Solana telegram bot')
 parser.add_argument('-c', '--cluster', default='t', type=str,
-                    help='type of cluster')
+                    help='type of cluster - m(main) or t(test))')
 parser.add_argument("-v", "--verbose", help="increase output verbosity to DEBUG", action="store_true")
 args = parser.parse_args()
 
 # Logging
+SOLANA_CLUSTER = args.cluster
+if SOLANA_CLUSTER != 't' and SOLANA_CLUSTER != 'm':
+    sys.exit()
+
 logging.getLogger('urllib3').setLevel(logging.WARNING)
 if args.verbose:
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(f'{constant.CURRENT_DIR}/bot.log'),
+            logging.FileHandler(f'{constant.CURRENT_DIR}/bot_{SOLANA_CLUSTER}.log'),
             logging.StreamHandler(sys.stdout),
         ]
     )
@@ -34,7 +38,7 @@ else:
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(f'{constant.CURRENT_DIR}/bot.log'),
+            logging.FileHandler(f'{constant.CURRENT_DIR}/bot_{SOLANA_CLUSTER}.log'),
             logging.StreamHandler(sys.stdout),
         ]
     )
@@ -42,7 +46,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_balance(pub_key):
-    process = subprocess.run([constant.SOLANA_PATH, 'balance', pub_key, f'-u{constant.SOLANA_CLUSTER}'],
+    process = subprocess.run([constant.SOLANA_PATH, 'balance', pub_key, f'-u{SOLANA_CLUSTER}'],
                              stdout=subprocess.PIPE,
                              universal_newlines=True)
 
@@ -70,7 +74,7 @@ def get_validator_info(pub_key):
     account = ""
     version = ""
     delinquent = ""
-    path = os.path.join(constant.CURRENT_DIR, 'files/validators.json')
+    path = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/validators.json')
     if os.path.isfile(path):
         file_json = open(path)
         data_json = json.load(file_json)
@@ -89,7 +93,7 @@ def get_validator_info(pub_key):
 
 def get_avg_skip_rate():
     skip = 0.0
-    path = os.path.join(constant.CURRENT_DIR, 'files/validators.json')
+    path = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/validators.json')
     if os.path.isfile(path):
         file_json = open(path)
         data_json = json.load(file_json)
@@ -102,7 +106,7 @@ def get_list_stakes(vote_address):
     active_stake = 0
     activating_stake = 0
     deactivating_stake = 0
-    path = os.path.join(constant.CURRENT_DIR, 'files/stake_' + vote_address + '.json')
+    path = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/stake_' + vote_address + '.json')
     if os.path.isfile(path):
         file_json = open(path)
         data_json = json.load(file_json)
@@ -125,7 +129,7 @@ def get_list_stakes(vote_address):
 
 def get_leader_all(pub_key):
     j = 0
-    path = os.path.join(constant.CURRENT_DIR, 'files/leader_schedule.json')
+    path = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/leader_schedule.json')
     if os.path.isfile(path):
         file_json = open(path)
         data_json = json.load(file_json)
@@ -138,7 +142,7 @@ def get_leader_all(pub_key):
 
 def get_leader_current(pub_key):
     j = 0
-    path = os.path.join(constant.CURRENT_DIR, 'files/block_production.json')
+    path = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/block_production.json')
     if os.path.isfile(path):
         file_json = open(path)
         data_json = json.load(file_json)
@@ -153,7 +157,7 @@ def get_epoch_info():
     number = []
     percent = []
     completed_time = ""
-    path = os.path.join(constant.CURRENT_DIR, 'files/epoch.txt')
+    path = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/epoch.txt')
     if os.path.isfile(path):
         with open(path, 'r') as file_e:
             for ln in file_e:
@@ -171,7 +175,7 @@ def get_epoch_info():
 
 def get_ip(pub_key):
     ip = ""
-    path = os.path.join(constant.CURRENT_DIR, 'files/gossip.json')
+    path = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/gossip.json')
     if os.path.isfile(path):
         file_json = open(path)
         data_json = json.load(file_json)
@@ -183,43 +187,45 @@ def get_ip(pub_key):
     return ip
 
 
-constant.SOLANA_CLUSTER = args.cluster
-
-logger.info("Remove old files.")
-path_files = os.path.join(constant.CURRENT_DIR, 'files')
+logger.info("Remove old files_t.")
+path_files = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}')
 for file in glob.glob(path_files + "/*"):
     os.remove(file)
 
-logger.info("Loading new files.")
-cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } validators --output json-compact"
-path_files = os.path.join(constant.CURRENT_DIR, 'files/validators.json')
+logger.info("Loading new files_t.")
+cmd = f"{ constant.SOLANA_PATH } -u{ SOLANA_CLUSTER } validators --output json-compact"
+path_files = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/validators.json')
 run_task(cmd, path_files)
 
-path_files = os.path.join(constant.CURRENT_DIR, 'files/gossip.json')
-cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } gossip --output json-compact"
+path_files = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/gossip.json')
+cmd = f"{ constant.SOLANA_PATH } -u{ SOLANA_CLUSTER } gossip --output json-compact"
 run_task(cmd, path_files)
 
-path_files = os.path.join(constant.CURRENT_DIR, 'files/leader_schedule.json')
-cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } leader-schedule --output json-compact"
+path_files = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/leader_schedule.json')
+cmd = f"{ constant.SOLANA_PATH } -u{ SOLANA_CLUSTER } leader-schedule --output json-compact"
 run_task(cmd, path_files)
 
-path_files = os.path.join(constant.CURRENT_DIR, 'files/block_production.json')
-cmd = f"{ constant.SOLANA_PATH } -u{ constant.SOLANA_CLUSTER } -v block-production --output json-compact"
+path_files = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/block_production.json')
+cmd = f"{ constant.SOLANA_PATH } -u{ SOLANA_CLUSTER } -v block-production --output json-compact"
 run_task(cmd, path_files)
 
-path_files = os.path.join(constant.CURRENT_DIR, 'files/epoch.txt')
-cmd = f"{ constant.SOLANA_PATH } epoch-info"
+path_files = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/epoch.txt')
+if SOLANA_CLUSTER == 't':
+    cmd = f"{ constant.SOLANA_PATH } epoch-info"
+else:
+    cmd = f"{ constant.SOLANA_PATH } -u{ SOLANA_CLUSTER } epoch-info"
 run_task(cmd, path_files)
 
 avg_skip = round(float(get_avg_skip_rate()), 2)
 list_epoch = get_epoch_info()
 
 logger.info("Collecting information.")
-path_files = os.path.join(constant.CURRENT_DIR, 'addresses.txt')
+path_files = os.path.join(constant.CURRENT_DIR, f'addresses_{SOLANA_CLUSTER}.txt')
 with open(path_files, 'r') as f:
     for line in f:
         list_word = line.split()
         q = QueryData()
+        q.set_cluster(SOLANA_CLUSTER)
         q.set_number(list_word[0])
         q.set_first_name(list_word[2])
         q.set_last_name(list_word[3])
@@ -234,8 +240,8 @@ with open(path_files, 'r') as f:
         q.set_leader_all(get_leader_all(list_word[1]))
         q.set_leader(get_leader_current(list_word[1]))
         if vote_key != '':
-            path_files = os.path.join(constant.CURRENT_DIR, 'files/stake_' + vote_key + '.json')
-            cmd = f"{constant.SOLANA_PATH} -u{constant.SOLANA_CLUSTER} stakes { vote_key } --output json-compact"
+            path_files = os.path.join(constant.CURRENT_DIR, f'files_{SOLANA_CLUSTER}/stake_{vote_key}.json')
+            cmd = f"{constant.SOLANA_PATH} -u{SOLANA_CLUSTER} stakes {vote_key} --output json-compact"
             run_task(cmd, path_files)
             lst = get_list_stakes(vote_key)
             q.set_stake(lst[0])

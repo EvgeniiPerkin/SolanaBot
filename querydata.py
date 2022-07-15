@@ -19,6 +19,7 @@ def send_msg_telegram(token, chat_id, body):
 class QueryData:
     def __init__(self):
         self.__cluster = ""
+        self.__max_cluster_skip = 0.0
         self.__last_name = ""
         self.__first_name = ""
         self.__number = 0
@@ -45,6 +46,10 @@ class QueryData:
 
     def set_cluster(self, cluster):
         self.__cluster = cluster
+        if cluster == 't':
+            self.__max_cluster_skip = 30.0
+        elif cluster == 'm':
+            self.__max_cluster_skip = 20.0
 
     def load_queue_number(self):
         tmp = get_queue_number(self.__public_key)
@@ -108,48 +113,77 @@ class QueryData:
         self.__delinquent = delinquent
 
     def send(self):
-        if self.__delinquent:
-            self.__mailing(constant.CHAT_ALARM, constant.CHAT_ALARM_EK, constant.CHAT_ALARM_SIA, self.__first_name)
-        elif self.__skip > (self.__cluster_skip + 30) and self.__epoch_percent > 25.00 and self.__queue_number is not None:
-            self.__mailing(constant.CHAT_ALARM, constant.CHAT_ALARM_EK, constant.CHAT_ALARM_SIA, self.__first_name)
-        self.__mailing(constant.CHAT_COMMON, constant.CHAT_EK, constant.CHAT_SIA, self.__first_name)
+        if self.__cluster == 't':
+            if self.__delinquent:
+                self.__send_test_network(constant.T_CHAT_ALARM, constant.T_CHAT_ALARM_EK, constant.T_CHAT_ALARM_SIA, self.__first_name)
+            elif self.__skip > (self.__cluster_skip + self.__max_cluster_skip) and self.__epoch_percent > 25.00:  # and self.__queue_number is not None:
+                self.__send_test_network(constant.T_CHAT_ALARM, constant.T_CHAT_ALARM_EK, constant.T_CHAT_ALARM_SIA, self.__first_name)
+            self.__send_test_network(constant.T_CHAT_COMMON, constant.T_CHAT_EK, constant.T_CHAT_SIA, self.__first_name)
+        elif self.__cluster == 'm':
+            if self.__delinquent:
+                self.__send_main_network(constant.M_CHAT_ALARM, constant.M_CHAT_ALARM_EK, self.__first_name)
+            elif self.__is_skip() and self.__epoch_percent > 25.00:  # and self.__queue_number is not None:
+                self.__send_main_network(constant.M_CHAT_ALARM, constant.M_CHAT_ALARM_EK, self.__first_name)
+            elif self.__is_balance():
+                self.__send_main_network(constant.M_CHAT_ALARM, constant.M_CHAT_ALARM_EK, self.__first_name)
+            self.__send_main_network(constant.M_CHAT_COMMON, constant.M_CHAT_EK, self.__first_name)
 
-    def __mailing(self, id_common, id_ek, id_sia, name_group):
+    def __send_test_network(self, id_common, id_ek, id_sia, name_group):
         self.__send(id_common, True)
         if name_group == 'EK':
             self.__send(id_ek, False)
         elif name_group == 'SIA':
             self.__send(id_sia, False)
 
+    def __send_main_network(self, id_common, id_ek, name_group):
+        self.__send(id_common, True)
+        if name_group == 'EK':
+            self.__send(id_ek, False)
+
     def __get_ico(self):
         if self.__delinquent:
             return u'\U0001f534'
-        if self.__skip >= (self.__cluster_skip + 30.0):
+        if self.__is_skip():
             return u'\U0001f536'
         if self.__skip == "null":
             return u'\U0001f536'
         if self.__ip == "":
             return u'\u2753'
-        if self.__balance < 1.0:
+        if self.__is_balance():
             return u'\U0001f536'
         return u'\u2705'
 
-    def __send(self, chat_id, is_number):
+    def __is_skip(self):
+        return self.__skip >= (self.__cluster_skip + self.__max_cluster_skip)
+
+    def __is_balance(self):
+        return self.__balance < constant.MIN_BALANCE
+
+    def __get_message_body(self, is_number):
         w = ""
-        icon_money = u'\U0001f4b8'
-        if self.__skip >= (self.__cluster_skip + 30.0):
-            w = "Skip > cluster+30%\n"
+        if self.__is_skip():
+            w = f"Skip > cluster+{self.__max_cluster_skip}%\n"
         if self.__delinquent == 'true':
-            w = "Delinquent!\n"
-        self.__icon = self.__get_ico()
+            w += "Delinquent!\n"
+        if self.__is_balance():
+            w += "Balance!\n"
+
+        cl = ""
+        if self.__cluster == 'm':
+            cl = "Main."
+        elif self.__cluster == 't':
+            cl = "TdS."
 
         if self.__first_name == self.__last_name:
             self.__name = self.__first_name
         else:
-            self.__name = f"{ self.__first_name }-{ self.__last_name }"
+            self.__name = f"{self.__first_name}-{self.__last_name}"
+
+        self.__icon = self.__get_ico()
+        icon_money = u'\U0001f4b8'
 
         if is_number:
-            body = f'{ self.__icon } <b>{ self.__number }. { w }</b>[{ self.__name }] <b>{ self.__public_key[:7] }</b>'
+            body = f'{ self.__icon } <b>{ self.__number }. { cl } { w }</b>[{ self.__name }] <b>{ self.__public_key[:7] }</b>'
         else:
             body = f'{ self.__icon } <b>[{ self.__last_name }] { self.__public_key[:7] }</b>'
         body += f' [ { self.__queue_number } ]\n'
@@ -158,5 +192,9 @@ class QueryData:
         body += f'<b>Activating</b>: { self.__activation }, <b>deactivating</b>: { self.__d_stake }\n'
         body += f'<b>Balance</b>: { self.__balance } { 	icon_money } \n'
         body += f'<b>Epoch</b>: { self.__epoch_num }, { self.__epoch_percent }%, { self.__epoch_end }\n'
-        body += f'<b>Version</b>: { self.__version }, <b>ip</b>: <u>{ self.__ip }</u>'
+        body += f'<b>Version</b>: { self.__version }, <b>IP</b>: <u>{ self.__ip }</u>'
+        return body
+
+    def __send(self, chat_id, is_number):
+        body = self.__get_message_body(is_number)
         send_msg_telegram(constant.TELEGRAM_TOKEN, chat_id, body)

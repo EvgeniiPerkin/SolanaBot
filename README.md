@@ -35,6 +35,7 @@ sudo apt-get update \
 && touch addresses_m.txt
 ```
 Fill in the files addresses_t.txt addresses_m.txt your key addresses.  
+Fill in the file constant.py your data.  
 ### Start script
 Mainnet
 ```python
